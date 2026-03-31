@@ -12,11 +12,7 @@ The data comes from the American Community Survey 5-year Estimates (2019-2023) w
 - Statistical Analysis: Performed a Multiple Linear Regression to model the relationship between income, poverty, and rent burden, followed by a Residual Analysis using diagnostic plots.
   
 ## Tools Used
-- R packages:
-    library(tidyverse)
-    library(ggplot2)
-    library(dplyr)
-    library(plotly)
+- R packages: library(tidyverse), library(ggplot2), library(dplyr), library(plotly)
 - R Studio
 - This website to retrieve color hex codes
   

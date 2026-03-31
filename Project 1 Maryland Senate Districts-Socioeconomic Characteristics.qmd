@@ -1,0 +1,217 @@
+---
+title: "Project 1 Maryland Senate Districts-Socioeconomic Characteristics"
+author: "Rin Hwang"
+format: html
+editor: visual
+---
+
+<https://github.com/p3nny-lan3/Project-1_Data-110/blob/main/README.md>
+
+## Introduction
+
+The Maryland Senate Districts-Socioeconomic Characteristics, ACS 5-year Estimates (2019-2023) dataset is that includes socioeconomic characteristics of all 47 Maryland Senate Districts. The American Community Survey 5-year Estimates are U.S. Census Bureau surveys that documents the average characteristics concerning housing and population metrics recorded during the 2019 to 2023.
+
+This dataset comes from the Maryland Open Data Portal, where the state collects and publishes data from all departments. I have linked the source [here](https://opendata.maryland.gov/Demographic/Maryland-Senate-Districts-Socioeconomic-Characteri/fi3w-qdad/about_data).
+
+My main research inquiry to this dataset is: From 2019-2023, how does median household income and the percentage of families in poverty affect the rental burden (percent of renters paying \>35% of income towards rent) across all 47 Maryland Senate Districts?
+
+There are 36 variables, 4 of them being categorical and 32 are quantitative. The main variables are self-explanatory in their names such as "POPULATION - Pct. Foreign born", "HOUSEHOLD - Pct. Receiving SNAP (food stamp)", and "COMMUTERS-Pct. Public Transportation". The variables I will be focusing on in this project are:
+
+-   "State legislative district": The unique number identifying each of Maryland's 47 Senate districts.
+
+-   "HOUSEHOLD - Median income": The median household income for the district.
+
+-   "Pct. Of FAMILIES in Poverty": The percentage of family units falling below the federal poverty threshold.
+
+-   "HOUSEHOLD - Pct. Who spend 35 percent or more of income on housing cost": Residents who spend 35 percent or more of their income on housing cost (rent or mortgage) and have a high rental burden.
+
+## Uploading libraries and dataset
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(plotly)
+
+setwd("C:/Users/hwang/OneDrive/Documents/MC stuff/Spring 2026/DATA 110 Data Visualization and Communication/Projects/Project 1 stuff")
+mdsenatedata <- read_csv("Maryland_Senate_Districts-Socioeconomic_Characteristics,_ACS_5-year_Estimates_(2019-2023).csv")
+```
+
+## Retrieving list of variables
+
+```{r}
+names(mdsenatedata)
+```
+
+## Cleaning the dataset
+
+```{r}
+# Make all variable characters lowercase
+names(mdsenatedata) <- tolower(names(mdsenatedata))
+
+# Replace spaces and dashes with underscores
+names(mdsenatedata) <- gsub(" ", "_", names(mdsenatedata), fixed = TRUE)
+names(mdsenatedata) <- gsub("-", "_", names(mdsenatedata), fixed = TRUE)
+
+# Remove commas and periods
+names(mdsenatedata) <- gsub(",", "", names(mdsenatedata), fixed = TRUE)
+names(mdsenatedata) <- gsub(".", "", names(mdsenatedata), fixed = TRUE)
+
+# Collapse multiple underscores into one
+names(mdsenatedata) <- gsub("_+", "_", names(mdsenatedata))
+
+# Renaming long variable names to shorter ones
+mdsenatedata <- mdsenatedata %>%
+  rename(
+    housing_burden_pct = `housing_pct_renter_occupied_paying_more_than_35_percent_of_income_on_rent`,
+    poverty_pct = `pct_of_families_in_poverty`
+  )
+names(mdsenatedata)
+```
+
+## Preliminary Chart: Housing Burden Distribution
+
+```{r}
+ggplot(mdsenatedata, aes(x = housing_burden_pct)) +
+  geom_histogram(fill = "darkgreen", color = "white", bins = 15) +
+  theme_minimal() +
+  labs(title = "Distribution of Rental Burden")
+```
+
+## Grouping Senate Districts into Regions
+
+```{r}
+mdsenatedata <- mdsenatedata %>%
+  mutate(district_num = state_legislative_district) %>%
+  mutate(maryland_region = case_when(
+    district_num %in% c(1, 2) ~ "Western Maryland",
+    district_num %in% c(3, 4, 5) ~ "Frederick/Carroll",
+    district_num %in% c(6, 7, 8, 9, 10, 11, 12, 13, 42, 44) ~ "Baltimore Region",
+    district_num %in% c(40, 41, 43, 45, 46) ~ "Baltimore City",
+    district_num %in% c(14, 15, 16, 17, 18, 19, 20, 39) ~ "Montgomery County",
+    district_num %in% c(21, 22, 23, 24, 25, 26, 47) ~ "Prince George's County",
+    district_num %in% c(27, 28, 29) ~ "Southern Maryland",
+    district_num %in% c(30, 31, 32, 33) ~ "Anne Arundel County",
+    district_num %in% c(34, 35) ~ "Harford/Cecil",
+    district_num %in% c(36, 37, 38) ~ "Eastern Shore",
+    TRUE ~ "Central Maryland"
+  ))
+```
+
+## Main Chart: Exploring Income vs. Housing Burden
+
+```{r}
+full_chart <- mdsenatedata %>%
+  mutate(
+    income_thousands = household_median_income / 1000
+  )
+
+ggplot(full_chart, aes(x = income_thousands, y = housing_burden_pct, color = maryland_region)) +
+  geom_point(aes(size = poverty_pct), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dotted", size = 0.5) +
+  
+  scale_color_manual(values = c(
+    "Western Maryland" = "#1B9E77", 
+    "Eastern Shore" = "#D95F02", 
+    "Southern Maryland" = "#7570B3", 
+    "Baltimore City" = "#E7298A", 
+    "Baltimore Region" = "#66A61E", 
+    "Montgomery County" = "#E6AB02", 
+    "Prince George's County" = "#A6761D", 
+    "Anne Arundel County" = "#D13636",
+    "Frederick/Carroll" = "#444444", 
+    "Harford/Cecil" = "#692546"
+  )) +
+  
+  labs(
+    title = "Analysis of Maryland Income vs. Rent Burden",
+    subtitle = "Comparing the 47 Senate Districts by Geographic Region",
+    x = "Median Household Income ($ in Thousands)",
+    y = "% Renters Paying >35% of Income on Rent",
+    color = "Maryland Region",
+    size = "% Families in Poverty",
+    caption = "Source: Maryland Open Data"
+  ) +
+  
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    legend.direction = "vertical",
+    legend.title = element_text(size = 7, face = "bold"), 
+    legend.text = element_text(size = 6),                
+    legend.key.size = unit(0.3, "cm"), 
+    legend.spacing.y = unit(0.1, "cm"),
+    
+    # --- MARGINS TO PREVENT CLIPPING ---
+    plot.margin = margin(t = 10, r = 60, b = 10, l = 10), # Added more room on the right (r=60)
+    plot.title = element_text(face = "bold", size = 12),
+    plot.subtitle = element_text(size = 9)
+  ) +
+  guides(
+    color = guide_legend(ncol = 1, order = 1), 
+    size = guide_legend(order = 2)
+  )
+```
+
+## Looking at Averages 
+
+#### (Does not pertain to question, however interesting to look at)
+
+```{r}
+regional_averages <- mdsenatedata %>%
+  group_by(maryland_region) %>%
+  summarize(
+    avg_income= mean(household_median_income),
+    avg_rent_burden = mean(housing_burden_pct),
+    avg_poverty = mean(poverty_pct),
+    district_count = n()
+  ) %>%
+  ungroup()
+
+print(regional_averages)
+```
+
+## Regression Analysis
+
+### Regression Model
+
+```{r}
+fit_md <- lm(housing_burden_pct ~ household_median_income + poverty_pct, data = mdsenatedata)
+
+summary(fit_md)
+```
+
+```{r}
+par(mfrow = c(2, 2))
+plot(fit_md)
+```
+
+### Equation
+
+![](images/clipboard-1032502470.png)
+
+P-values: Neither Income (0.159) nor Poverty (0.702) reached the standard significance level of 0.05. This means that while there is a slight downward trend for income and upward trend for poverty, these two factors alone are not "statistically significant" predictors of housing burden for Maryland Senate districts.
+
+Adjusted R-squared: The adjusted R-squared is 0.122. This means that only 12.2% of the variation in housing burden is explained by the model. The other 87.8% is caused by factors NOT in this model. This could include determinants such as local zoning, proximity to DC and Baltimore, or the number and supply of apartments.
+
+Diagnostic Plots: The Residuals vs Fitted plot was used to verify linearity, it seems that income and poverty do have a straight-line relationship with rent burden. The Q-Q plot confirms the normality of the residuals. This plot shows some outliers that reveal how Senate Districts 46 (South Baltimore City) and 47 (Prince George's County on the border of DC) have a rent burden that is much higher or lower than what their income levels would suggest. The Scale-Location plot checked for consistent variance. The Residuals vs Leverage plot identified specific districts that affect disproportionate influence on the model’s coefficients. In this case, we can see that Districts 16 (South Montgomery County), 40 (East Baltimore City), and 46 have a significant influence on the regression results.
+
+While the overall model is statistically significant (p-value = 0.021), the low Adjusted R\^2 of 0.122 suggests that median income and poverty rates only account for about 12% of the variation in housing burden across Maryland. This indicates that other geographic or policy-driven factors are likely influencing rental costs in the state.
+
+## Conclusion and Insights
+
+#### Dataset clean-up
+
+In this project's dataset, I first did some cleaning of the variable names. The default variables had lower- and uppercase letters, periods, commas, and spaces. In order to do this I used gsub() to convert all names to lowercase and replace these characters with underscores. I further refined the it by renaming the long-form strings into short identifiers like housing_burden_pct and poverty_pct for better reading and handling. Additionally, I performed categorical data binning. By using the case_when() function, I categorized the 47 state_legislative_district numbers into 10 distinct geographic regions (e.g., "Western Maryland," "Montgomery County"). This feature engineering allowed for a more intricate regional analysis.
+
+#### Visualization
+
+The main scatter plot visualizes the socioeconomic representation of Maryland during the period of 2019-2023. The most striking pattern is the geographic clustering of districts. The "Baltimore City" districts (pink) are clustered at the high end of the y-axis, representing a high rental burden at lower income levels. In contrast, "Montgomery County" (yellow) and "Prince George's County" (brown) show a horizontal spread, suggesting that while their incomes vary significantly, their rent burden remains relatively high, this is likely due to the high cost of living in the D.C. metropolitan area.
+
+An interesting pattern in this data is the variance in the middle-income districts. This likely reflects the economic distortions of the COVID-19 pandemic. One reason why this may have occurred is that during this period, Maryland saw a surge in remote work, which allowed higher-income residents to migrate to traditionally "affordable" regions, potentially driving up rents in those areas and dividing rent burden from local median incomes. The inclusion of poverty as a third variable shows that housing stress is not strictly a low-income issue. The data suggests that COVID-19's impact on the housing market inflated costs to the point that even those with higher income still struggle to keep up with rent, exacerbating the burden for those with lower income.
+
+#### Technical Challenges and Future Studies
+
+One technical hurdle I faced making the entire legend fit. In the ten distinct regions I made, the vertical legend initially pushed past the plot margins. I resolved this by shrinking the legend text and manually expanding the plot.margin on the right side.
+
+If I were to expand this project, I would like to include a data before 2019, such as 2014–2018. Looking at this "pre-crisis" period would allow us to see the housing burden that likely followed a more predictable linear relationship with income. Additionally, also comparing 2024–present data could reveal whether the we trends we identified has become a permanent feature of the Maryland's economy or if the market is beginning to stabilize, or if different trends are happening.

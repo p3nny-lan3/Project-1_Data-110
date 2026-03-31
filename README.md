@@ -14,7 +14,7 @@ The data comes from the American Community Survey 5-year Estimates (2019-2023) w
 ## Tools Used
 - R packages: library(tidyverse), library(ggplot2), library(dplyr), library(plotly)
 - R Studio
-- [This website] (https://htmlcolorcodes.com) to retrieve color hex codes
+- [This website](https://htmlcolorcodes.com) to retrieve color hex codes
   
 ## Author
 Rin Hwang
